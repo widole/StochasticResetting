@@ -1,56 +1,44 @@
-%% Main Simulation Project File
+%% Main file for Stochastic Resetting Simulations
 clear all; close all; clc
-% For further reading of Levy Flight implementation please see
-% "Evolutionarily Emergent Foraging Strategies for Active Agents" by Emil
-% Jansson,
-% link: https://odr.chalmers.se/items/e10d85ed-38d4-499d-ba98-65ccfd515f11
+% This is the main file for the Stochastic Resetting project. For
+% background please refer to Yael Roichman's research group at Tel Aviv
+% University.
 
-% For Stochastic Resetting, please check Yael Roichmans group's research at
-% the Tel Aviv University
+% Here we also want to add more details on how the simulations work.
 
-% Structure of program is classes: always starts with capital letter for
-% each word, no spaces, underscores etc. Class methods, no capital letters,
-% underscores to separate words, same for properties
+% We want to compare the time to reach the goal (randomly placed in the
+% arena) for an agent without resetting, with resetting of different
+% values, as well as for intelligent resetting (i.e. the agent should learn
+% when to reset).
 
-%% Run Simulation Script
+%% Run Main Simulation (Calls sub-script)
 
-% While loop to rerun the program after it has finished
-while true
-    % Program selection questions
-    list = {'New Simulation', 'Genetic Algorithm', 'Levy Flight', 'Stochastic Reset'};
-    [indx,tf] = listdlg('ListString', list);
+% Start Learning Phase (for learning agents, unless learning has already
+% been done (should have a save file for latest intelligent agents
+% resetting functionality))
+
+% Start main simulation phase (comparison between all the different agents)
+% Create the stochastic resetting class for simulations, this contains all
+% the necessary parts for simulating stochastic resetting.
+StochResSimClass = StochastichResettingSimulation();
+
+% Initiate the stochastic resetting simulation class
+StochResSimClass = StochResSimClass.init(params);
+
+% Run the main simulation of stochastic resetting class
+StochResSimClass = StochResSimClass.run(params);
+
+% finish and show results from stochastic resetting
+StochResSimClass = StochResSimClass.results(params);
 
 
-%     answer = questdlg('What do you want to do?', ...
-% 	    'Program Selection', ...
-% 	    'New Simulation', 'Genetic Algorithm', 'Levy Flight', 'Cancel', ...
-%         'Genetic Algorithm');
-    
-    if tf
-        % Handle response
-        switch list{indx}
-            case 'New Simulation'
-                disp([list{indx} ': Starting new simulation...'])
-                ProgClassCall;
-                break;
-            case 'Genetic Algorithm'
-                disp([list{indx} ': Starting Genetic Algorithm Training...'])
-                ProgClassCall;
-                break;
-            case 'Levy Flight'
-                disp([list{indx} ': Starting Levy Flight simulation'])
-                ProgClassCall;
-                break;
-            case 'Stochastic Reset'
-                disp([list{indx} ': Strarting Stochastic Resetting simulation...'])
-                ProgClassCall;
-                break;
-            case 'Cancel'
-                disp('Shutting down...')
-                break
-        end
-    else
-        disp('Shutting down...')
-        break
-    end
-end
+
+%% Save the simulation results
+
+% Get the date
+date = datetime('today');
+% Create file name
+filename = sprintf('SavedResults\\%s.mat', date);
+
+% Save file
+save(filename, 'StochResSimClass');
