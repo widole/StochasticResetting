@@ -170,7 +170,7 @@ classdef Counter
         function self = g_found(self)
 
             % Check that goal is found
-            b_goal = true;
+            self.b_goal = true;
 
         end
 

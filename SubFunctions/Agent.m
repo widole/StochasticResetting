@@ -61,8 +61,6 @@ classdef Agent
         % End init function
         end
 
-
-
         % Updates the current position
         function self = move(self, curr_res, world, params)
 
@@ -135,93 +133,6 @@ classdef Agent
 
         % End function
         end
-
-
-
-
-
-
-
-
-
-        % Update memory of agent
-        function self = upd_mem(self, found_area)
-
-            % Find which area the agent has visited
-            self.mem_arr = [self.mem_arr(2:end); found_area];
-
-        end
-
-        % Reset agent
-        function self = reset(self, agentType, wb, params)
-
-            % Reset agents rotation
-            self.theta = (-1 + 2*rand) * pi;
-
-            % Reset agents position
-            if params.stoch_res
-
-                % If stochastic resetting is used, then the agents always
-                % starts at origin
-                self.x = 0;
-                self.y = 0;
-
-            else
-
-                % Init position, if not stochastic resetting is used, then
-                % the agent should start at random location
-                self.x = 2 * params.cell_size * (-1 + 2*rand);
-                self.y = 2 * params.cell_size * (-1 + 2*rand);
-                
-            end
-
-            % Set new neural network parameters if wb was supplied
-            if strcmp(agentType, 'GA')
-
-
-                
-
-
-                %% Set the supplied weights and biases
-                % Get size of hidden weights
-                hweights_size = size(self.counter.eff_gen.hidden_weights);
-                % Reshape to correct size
-                hweights = reshape(wb(1:hweights_size(1)*hweights_size(2)), hweights_size(1), hweights_size(2));
-                % Get size of output weights
-                oweights_size = size(self.counter.eff_gen.output_weights);
-                % Reshape to correct size
-                oweights = reshape(wb(hweights_size(1)*hweights_size(2)+1:end), oweights_size(1), oweights_size(2));
-
-                
-                %% Print out comparison
-
-                disp("Original Hidden")
-                self.counter.eff_gen.hidden_weights
-                disp("New Hidden")
-                hweights
-
-                disp("Original Output")
-                self.counter.eff_gen.output_weights
-                disp("New Output")
-                oweights
-
-
-                % Update weights and biases
-                self.counter.eff_gen.hidden_weights = hweights;
-                self.counter.eff_gen.output_weights = oweights;
-
-            end
-
-            % Reset memory
-            self.mem_arr = [zeros(params.mem_sz - 1, 1); 1];
-
-            % Reset counters
-            self.counter = self.counter.reset(self.mem_arr);
-
-        % End function
-        end
-
-        
 
     end
 

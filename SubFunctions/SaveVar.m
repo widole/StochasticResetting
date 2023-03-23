@@ -65,58 +65,6 @@ classdef SaveVar
 
         end
 
-
-        
-        % Check agents position within world to check what area is explored
-        function curr_area = cmp_pose_area(self, world_params, agent)
-            
-            % Find integer n for x position area unit
-            n_x = floor(agent.x / world_params.area_unit);
-
-            % Find integer n for y position area unit
-            n_y = floor(agent.y / world_params.area_unit);
-
-            % Explored area is
-            curr_area = [n_x, n_y] * world_params.area_unit;
-
-        % End function
-        end
-
-       
-
-        % Add current area unit to expl_area
-        function [self, found_area] = save_area(self, i, j, curr_area)
-
-            % Set found_area to 0
-            found_area = 0;
-
-            % Compare to list
-            is_present = any(ismember(self.expl_area{i, j}, curr_area, 'rows'));
-
-            % Add if not already visited
-            if ~is_present
-
-                % Add to expl_are array
-                self.expl_area{i, j} = [self.expl_area{i, j}; curr_area];
-
-                % Set found_area to 1
-                found_area = 1;
-
-            end
-
-        end
-
-        % Save all variables to file end of simulation
-        function save_2_file(self, params)
-
-            prompt = "Input file name for simulation results: ";
-
-            file_name = input(prompt, 's');
-
-            save(sprintf('SavedResults/%s', file_name), "self", "params");
-
-        end
-        
     % End methods
     end
 

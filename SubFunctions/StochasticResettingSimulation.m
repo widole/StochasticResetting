@@ -80,6 +80,8 @@ classdef StochasticResettingSimulation
 
         % End function
         end
+    
+        
     % End methods
     end
 
