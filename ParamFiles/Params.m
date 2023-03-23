@@ -28,7 +28,7 @@ classdef Params
         % Stochastic resetting rates (What rates do we want to compare
         % between for checking if stochastic resetting works, and comparing
         % it to the intelligent version?)
-        sr_rates = [0, .02, .2];
+        sr_rate = .02; % [0, .02, .2];
 
         % Memory size of agents (should agents have any memory in this
         % case?)
@@ -44,11 +44,14 @@ classdef Params
         
         %% Environment Parameters
 
+        % World resistance to motion
+        res = 1;
+
         % Should we have obstacles in the arena (1 for yes, 0 for no)
         obstacles = 0;
 
         % Home epsilon (distances to absolute 0 that counts as home)
-        epsilon = 0.0005;
+        epsilon = 0.005;
 
         % Boundary conditions (0 = unbounded, 1 = periodic, 2 = fixed, 3 =
         % bounce)

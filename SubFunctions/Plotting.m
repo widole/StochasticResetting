@@ -1,14 +1,12 @@
 %% Class definition for plotting results of simulation
+% Used for plotting the results
 
 classdef Plotting
 
     properties
         
-        % Figures
-        
         % Figure for continuously plotting motion of agent in area
         fig_cont_motion;
-
 
         % Save axis
         ax = {};
@@ -16,9 +14,6 @@ classdef Plotting
         g_ax;
         g_x;
         g_y;
-
-        % Alpha values 
-%         alp_val = linspace(0, 1, tail);
 
         % Holder for title continuous motion
         t_cont;
@@ -28,37 +23,29 @@ classdef Plotting
     methods
 
 
-        function self = init_PLOT(self, world, params)
+        function self = init(self, pop, world, params)
 
             % Initiate continuous plotting figure
             self.fig_cont_motion = figure('name', 'Continuous Motion Plot'); % , 'WindowState','maximized');
             self.t_cont = get(gca,'Title');
             set(self.t_cont,'String',strcat('Motion at t = ', num2str(0), '%.1f'));
 
-            if world.world_params.bnd_cond ~= 0
-                axis([-world.world_params.wrld_sz, world.world_params.wrld_sz, ...
-                    -world.world_params.wrld_sz, world.world_params.wrld_sz]);
+            if world.bound_cond ~= 0
+                axis([-world.world_size, world.world_size, ...
+                    -world.world_size, world.world_size]);
             end
             hold on;
-%             plot(agent.x, agent.y, '-o', 'markersize', 5, 'color', 'blue');
-%             hold on;
 
-            % Plot goal, if exists
-            if params.goal
 
-                th = 0:pi/50:2*pi;
-                self.g_x = world.world_params.goal.rad * cos(th) + world.world_params.goal.center(1);
-                self.g_y = world.world_params.goal.rad * sin(th) + world.world_params.goal.center(2);
-                self.g_ax = plot(self.g_x, self.g_y, 'color', 'red');
+            th = 0:pi/50:2*pi;
+            self.g_x = world.goal_rad * cos(th) + world.goal_center(1);
+            self.g_y = world.goal_rad * sin(th) + world.goal_center(2);
+            self.g_ax = plot(self.g_x, self.g_y, 'color', 'red');
 
-%                 plot(world.goal.center(1), world.goal.center(2), ...
-%                     'MarkerSize', 1.8288 * world.goal.rad, 'color', 'red');
 
-            end
-
-            for i=1:length(world.pop.agents)
+            for i=1:length(pop.agents)
                 % Save initial position of agent
-                self.ax{i} = plot(world.pop.agents(i).x, world.pop.agents(i).y, ...
+                self.ax{i} = plot(pop.agents{i}.x, pop.agents{i}.y, ...
                     'o', 'color', 'blue', 'linewidth', 1.5, 'markersize', 5);
             end
 
@@ -75,14 +62,10 @@ classdef Plotting
                 delete(self.ax{i})
     
                 % Replot axis
-                if (agents(i).return_home)
-    
-                    self.ax{i} = plot(agents(i).x, agents(i).y, 'o', 'color', 'red', 'linewidth', 1.5, 'markersize', 5);
-    
+                if (agents{i}.return_home)
+                    self.ax{i} = plot(agents{i}.x, agents{i}.y, 'o', 'color', 'red', 'linewidth', 1.5, 'markersize', 5);
                 else
-    
-                    self.ax{i} = plot(agents(i).x, agents(i).y, 'o', 'color', 'blue', 'linewidth', 1.5, 'markersize', 5);
-    
+                    self.ax{i} = plot(agents{i}.x, agents{i}.y, 'o', 'color', 'blue', 'linewidth', 1.5, 'markersize', 5);
                 end
 
             % End for-loop
@@ -95,23 +78,43 @@ classdef Plotting
 
             % Chose the right figure
             figure(self.fig_cont_motion)
-
+            % clear figure
             cla
 
-            if params.goal
+            % Plot the goal again
+            self.g_ax = plot(self.g_x, self.g_y, 'color', 'red');
 
-                self.g_ax = plot(self.g_x, self.g_y, 'color', 'red');
-
-            end
-% 
-%             for i=1:length(agents)
-%                 % Delete axis
-%                 cla(self.ax{i})
-%             end
 
         % End function
         end
 
+        function self = example_traj(self, pop, world, params)
+
+            figure('name', 'Example Trajectories')
+
+            % First plot the goal
+            plot(self.g_x, self.g_y, 'color', 'red');
+            hold on; grid on
+
+
+            for i=1:size(pop.agents, 1)
+
+                % Get random averaging agent
+                j = randsample(1:size(pop.agents,2), 1);
+
+                plot(pop.savevar.pose{i, j}(1, :), pop.savevar.pose{i, j}(2, :))
+
+            end
+
+            xlabel('Position')
+            ylabel('Position')
+            title('Example Trajectories of Agents')
+            legend({'No Reset', 'Exponential Reset', 'Intelligent Reset'})
+
+        end
+        
+        
+        
         function self = plot_result(self, world, savevar, params)
 
             %% Set-up
@@ -290,101 +293,7 @@ classdef Plotting
 %             end
 
         end
-
-        function self = plot_GAresults(self, results, params)
-
-            % Create figure for explored area plot
-            figure('name', 'Explored Areas over generations')
-
-            hold on;
-
-            % Loop through the generations
-            for i=1:params.nr_gen
-
-                % Get average amount of explored areas per generation
-                tmp_avr = (sum(cellfun(@length, results{i}.expl_area))) / params.nr_pop;
-
-                stem(i, tmp_avr);
-
-            % End for-loop
-            end
-
-            title('Average Explored Areas')
-            xlabel('Generation')
-            ylabel('Explored Areas')
-
-        % End function
-        end
-
-        function self = plotLFresults(self, world, savevar, params)
-
-            %% Plot explored areas
-
-            % Add averaging explored areas also!
-            figure('name', 'explored areas')
-            hold on; grid on
-
-            for j=1:size(savevar.expl_area, 2)
-
-                tmp_expl_area = 0;
-
-                for i=1:size(savevar.expl_area, 1)
-
-                    tmp_expl_area =  tmp_expl_area + length(savevar.expl_area{i, j});
-
-                end
-
-                stem(params.alpha(j), tmp_expl_area / params.nr_agents)
-
-            end
-            xlabel('Alpha value')
-            ylabel('Amount of found areas')
-            title('Comparison of found areas for different alphas')
-
-
-            %% Plot MSD
-
-            MSD = zeros(params.N, size(savevar.pose_arr, 2));
-
-            
-            % Calculate the MSD for the trajectories
-            % Run throught each time step
-            for i=1:params.N
-
-                % run throught all distributions
-                for j=1:size(savevar.pose_arr, 2)
-
-                    % run through all the agents
-                    for k=1:size(savevar.pose_arr, 1)
-    
-                        MSD(i, j) = MSD(i, j) + ( ...
-                            (savevar.pose_arr{k, j}(1, i) - savevar.pose_arr{k, j}(1, 1))^2 +  ...
-                            (savevar.pose_arr{k, j}(2, i) - savevar.pose_arr{k, j}(2, 1))^2);  % y
-            
-                    end
-
-                    MSD(i, j) = MSD(i, j) / params.N;
-
-                end
-            end
-
-            % Plot MSD
-            figure('name', 'MSD')
-            
-
-            for i=1:size(MSD, 2)
-
-                loglog(1:params.N, MSD(:, i), 'o-')
-                hold on; grid on
-
-            end
-
-
-
-
-
-        % End function
-        end
+ 
 
         function self = plotSRresults(self, world, savevar, params)
             % Plotting the results from the stochastic resetting
@@ -504,8 +413,10 @@ classdef Plotting
 
         % End function
         end
+
     % End method
     end
+
 % End class
 end
 

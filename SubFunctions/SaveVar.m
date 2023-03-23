@@ -7,91 +7,65 @@ classdef SaveVar
 
     properties
 
-        %% Arrays for saved variables
-
         % Position array
-        pose_arr = {};
+        pose = {};
 
         % Resetting array
-        reset_arr = {};
-
-        % Explored areas
-        expl_area = {};    
+        reset = {};  
         
-
     end
 
     methods
 
-        % Initialize arrays
-        function self = init_savevar(self, sim_id, world_params, agents, params)
+        function self = init(self, agents)
 
-            % Go through each agent
+            % Loop through all the agents to save their current positions
             for i=1:size(agents, 1)
                 for j=1:size(agents, 2)
 
-                    % Init pose_arr array
-                    if strcmp(sim_id, 'sr')
-                        self.pose_arr(i,j) = {[agents(i,j).x; agents(i,j).y]};
-                    else
-                        self.pose_arr(i, j) = {[agents(i, j).x; agents(i, j).y; 1]};
-                    end
+                    % Save positions to pose array
+                    self.pose(i, j) = {[agents{i, j}.x; agents{i, j}.y]};
+
+                    % Initiate the resetting array
+                    self.reset(i, j) = {0};
         
-                    % Init expl_area array
-                    if strcmp(sim_id, 'lf') || strcmp(sim_id, 'ga') 
-                        curr_area = self.cmp_pose_area(world_params, agents(i, j));
-                        self.expl_area(i, j) = {curr_area};
-                    end
-        
-                    % If stochastic resetting then add values to the reset_arr
-                    if params.stoch_res
-        
-                        self.reset_arr(i, j) = {0};
-        
-                    end
                 end
-            % End for-loop
             end
 
         % End function
         end
 
         % Save agent variables
-        function [self, agents] = store_vars(self, sim_id, world_params, agents, params)
+        function self = store(self, world, agents, params)
 
-            % Loop through all the agents
-            for i=1:size(agents, 1)
-                for j=1:size(agents, 2)
-
-                    % Find current area in world
-                    curr_area = self.cmp_pose_area(world_params, agents(i, j));
-    
-                    if strcmp(sim_id, 'lf') || strcmp(sim_id, 'ga')
-                        % Add current area to explored area list
-                        [self, found_area] = self.save_area(i, j, curr_area);
-
-                        % Save position to variable
-                        self = self.save_pose(i, j, agents(i, j), params, found_area);
-
-                        % Update agents memory
-                        agents(i, j) = agents(i, j).upd_mem(found_area);
-
-                    else
-                        
-                        % Save position to variable
-                        self = self.save_pose(i, j, agents(i, j), params);
-
-                    end
-    
-                    
-    
-                    
-
-                end
-            end
+            % Save position to variable
+            self = self.store_pose(agents, params);
 
         % End function
         end
+
+         % Add current position to pose_arr
+         function self = store_pose(self, agents, params)
+
+             for i=1:size(agents, 1)
+                 for j=1:size(agents,2)
+
+                     % Add position to list
+                     self.pose{i, j}(:, end+1) = ...
+                         [agents{i, j}.x; agents{i, j}.y];
+
+                     % Add reset value to list
+                     if agents{i, j}.return_home
+                         self.reset{i, j}(end+1) = 1;
+                     else
+                         self.reset{i, j}(end+1) = 0;
+                     end
+                 end
+             end
+
+        end
+
+
         
         % Check agents position within world to check what area is explored
         function curr_area = cmp_pose_area(self, world_params, agent)
@@ -108,27 +82,7 @@ classdef SaveVar
         % End function
         end
 
-        % Add current position to pose_arr
-        function self = save_pose(self, i, j, agent, params, found_area)
-
-            % Add position to list
-            if nargin < 6
-                self.pose_arr{i, j}(:, end+1) = [agent.x; agent.y];
-            else
-                self.pose_arr{i, j}(:, end+1) = [agent.x; agent.y; found_area]; %[self.pose_arr, [agent.x; agent.y; found_area]];
-            end
-
-            % If stochastic resetting then add values to the reset_arr
-            if params.stoch_res
-                if agent.stoch_res_curr
-                    self.reset_arr{i, j}(end+1) = 1;
-                else
-                    self.reset_arr{i, j}(end+1) = 0;
-                end
-            end
-
-
-        end
+       
 
         % Add current area unit to expl_area
         function [self, found_area] = save_area(self, i, j, curr_area)

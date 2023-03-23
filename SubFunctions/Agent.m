@@ -3,11 +3,7 @@
 classdef Agent
 
     properties
-        % Necessary properties of agent class
 
-        % Agent identifiers
-        i;
-        j;
 
         % Position and motion
         x;
@@ -33,8 +29,11 @@ classdef Agent
     methods
         % Agent specific functions
 
-        function self = init_agent(self, sim_id, params, i, j)
-            % Initializing the agent
+        function self = init(self, reset, params)
+            
+            % Initializing the agent, give it a start location and
+            % rotation. It should also initialize the counters for tumbling
+            % and resetting.
 
             % Initialize the rotation to random value between [-pi, pi]
             self.theta = (-1 + 2*rand) * pi;
@@ -43,44 +42,12 @@ classdef Agent
             self.v = params.v;
 
             % Initialize start position of agent
-            if strcmp(sim_id, 'sr')
-                % if stochastic resetting simulation is started, then the
-                % agent should be first in origin (i.e. [0, 0])
+            self.x = 0;
+            self.y = 0;
 
-                self.x = 0;
-                self.y = 0;
-
-            else
-                % If not stochastic reset, then the agent can start with in
-                % [-2, 2] * cell_size of arena.
-
-                self.x = 2 * params.cell_size * (-1 + 2*rand);
-                self.y = 2 * params.cell_size * (-1 + 2*rand);
-                
-            end
-
-            % Initiate the memory array, in the beginning it is empty
-            if strcmp(sim_id, 'ga')
-                % If genetic algorithm simulation is run, then the agent
-                % should initiate a 256 element long array, which should
-                % store whether the agent has found a place it has not yet
-                % been at or not. (256 is set as a parameter in params)
-
-                self.mem_arr = [zeros(params.mem_sz - 1, 1); 1];
-
-            elseif strcmp(sim_id, 'lf')
-                % If levy flight, what do we use the memory array for then?
-
-                self.mem_arr = 0;
-
-            elseif strcmp(sim_id, 'sr')
-                % For stochastic resetting, the memory array should
-                % contain, the time length since last reset + the distance
-                % from origin?
-
-                self.mem_arr = [0; 0];
-                
-            end
+            % What should the memory array contain for stochastic
+            % resetting? (TO DO)
+            self.mem_arr = [0; 0];
             
 
             % Create counter for the agent (the counter keeps track of the
@@ -88,184 +55,94 @@ classdef Agent
             % times)
             self.counter = Counter();
 
-            % Initiate the counters
-            self.counter = self.counter.init_counter( ...
-                self.mem_arr, sim_id, params, i, j);
+            % Initiate the counter
+            self.counter = self.counter.init(reset, params);
 
-        % End function
+        % End init function
         end
+
+
 
         % Updates the current position
-        function self = move(self, sim_id, res, world_params, params)
+        function self = move(self, curr_res, world, params)
 
 
-            %% Update x and y
+            % If we are returning home, then the agent should turn towards
+            % middle constantly
+            if self.return_home
+                % Find direction of home and set as angle
+                self.theta = atan2((0 - self.y), (0 - self.x));
+            end
 
-            % x position update
+            % Update X and Y
             dx = self.v * params.dt * cos(self.theta);
-
-            % y position update
             dy = self.v * params.dt * sin(self.theta);
 
-            % Update position according to world
-            self = self.cmp_pose_world(world_params, dx, dy);
+            % Check world, if position allowed
+            [self.x, self.y] = world.corr_pose(self.x, self.y, dx, dy);
 
-            %% Update stochastic reset
-
-            % For stochastic resetting, check if close enough to home
-            if (abs(self.x) < params.epsilon && abs(self.y) < params.epsilon)
-
+            % Check if close enough to home to break return home motion
+            if (abs(self.x) < params.epsilon && ...
+                    abs(self.y) < params.epsilon)
                 self.return_home = 0;
-
             end
 
-            %% Check counters
+            % Update the counters
+            [self.counter, rt_reset, sr_reset] = ...
+                self.counter.upd_counters( ...
+                self.return_home, curr_res, self.mem_arr, params);
 
-            % Update counters
-            [self.counter, eff_reset, stoch_reset] = self.counter.upd_counters(sim_id, self.return_home, res, self.mem_arr, params);
-
-            % Check if counters were reset, then perform action
-            if eff_reset == true
-
+            % If counters have resetted, then perform the actions
+            if rt_reset == true
                 % Rotate
                 self = self.rotate(params);
-
-            % End if
             end
-
-            if stoch_reset == true
-
-                % Set return home policy
-                self = self.sto_res();
-
-            % End if
+            if sr_reset == true
+                % Return home
+                self = self.ret_home();
             end
 
         end
 
-        % Check agents position compared to world and it parameters
-        function self = cmp_pose_world(self, world_params, dx, dy)
-
-            % First check if the agent is inside the boundary box, if there
-            % is one
-            switch world_params.bnd_cond
-
-                % Case for when we have unbounded
-                
-                case 0
-
-                    % Nothing happens
-                    self.x = self.x + dx;
-                    self.y = self.y + dy;
-
-                % Case when we have periodic boundary
-                case 1
-
-                    % check for x
-                    if ((self.x + dx) > world_params.wrld_sz) || ...
-                            ((self.x + dx) < -world_params.wrld_sz)
-
-                        self.x = -self.x + dx;
-
-                    else
-
-                        self.x = self.x + dx;
-
-                    end
-
-                    % check for y
-                    if ((self.y + dy) > world_params.wrld_sz) || ...
-                            ((self.y + dy) < -world_params.wrld_sz)
-
-                        self.y = -self.y + dy;
-
-                    else
-
-                        self.y = self.y + dy;
-
-                    end
-
-                % Fixed boundaries
-                case 2
-
-                    % Check for x
-                    if (abs(self.x + dx) > world_params.wrld_sz)
-
-                        self.x = sign(self.x + dx) * world_params.wrld_sz;
-
-                    else
-
-                        self.x = self.x + dx;
-
-                    end
-
-                    % Check for y
-                    if (abs(self.y + dy) > world_params.wrld_sz)
-
-                        self.y = sign(self.y + dy) * world_params.wrld_sz;
-
-                    else
-
-                        self.y = self.y + dy;
-
-                    end
-
-                % Check for bounce boundaries
-%                 case 3
-%                     % Check for x
-%                     if (abs(agent.x + dx) > self.wlrd_sz)
-%                         x = sign(agent.x + dx) * self.wlrd_sz - ...
-%                             sign(dx) * (agent.x + dx - sign(agent.x + dx) * self.wlrd_sz);
-%                         % Rotation
-%                         theta = agent.theta + sign(dy) * pi/2;
-%                     else
-%                         x = agent.x + dx;
-%                         theta = agent.theta;
-%                     end
-%                     % Check for y
-%                     if (abs(agent.y + dy) > self.wlrd_sz)
-%                         y = sign(agent.y + dy) * self.wlrd_sz - ...
-%                             sign(dy) * (agent.y + dy - sign(agent.y + dy) * self.wlrd_sz);
-%                         % Rotation
-%                         theta = agent.theta - sign(dx) * pi/2;
-%                     else
-%                         y = agent.y + dy;
-%                         theta = agent.theta;
-%                     end
-                    
-                    
-            end
-
-        end
-
-        
         function self = rotate(self, params)
-            % Update the agents rotation (theta)
-
+            
+            % Update agents rotation
             if (self.return_home)
                 self.theta = self.theta;
             else
-                % Update the particles rotation
                 self.theta = self.theta + (-1 + 2*rand) * params.rot_upd;
             end
 
         end
 
-        % Reset agent position to origin
-        function self = sto_res(self)
+        function self = ret_home(self)
 
-            % Reset position to 0
-%             self.x = 0;
-%             self.y = 0;
-
-
-            % Set global value to 1 to show current resetting
+            % Set that agent is returning home
             self.return_home = 1;
 
             % Find direction of home and set as angle
             self.theta = atan2((0 - self.y), (0 - self.x));
 
         end
+
+        function self = found_goal(self)
+            % If the goal is found, then we update the variable here
+
+            self.g_found = true;
+
+            % Stop the timer
+            self.counter = self.counter.g_found();
+
+        % End function
+        end
+
+
+
+
+
+
+
+
 
         % Update memory of agent
         function self = upd_mem(self, found_area)
@@ -344,16 +221,7 @@ classdef Agent
         % End function
         end
 
-        function self = found_goal(self)
-            % If the goal is found, then we update the variable here
-
-            self.g_found = true;
-
-            % Stop the timer
-            self.counter = self.counter.g_found();
-
-        % End function
-        end
+        
 
     end
 

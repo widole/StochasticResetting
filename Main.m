@@ -11,6 +11,9 @@ clear all; close all; clc
 % values, as well as for intelligent resetting (i.e. the agent should learn
 % when to reset).
 
+% First we load the parameters-file
+params = Params();
+
 %% Run Main Simulation (Calls sub-script)
 
 % Start Learning Phase (for learning agents, unless learning has already
@@ -20,16 +23,22 @@ clear all; close all; clc
 % Start main simulation phase (comparison between all the different agents)
 % Create the stochastic resetting class for simulations, this contains all
 % the necessary parts for simulating stochastic resetting.
-StochResSimClass = StochastichResettingSimulation();
+StochResSimClass = StochasticResettingSimulation();
 
 % Initiate the stochastic resetting simulation class
 StochResSimClass = StochResSimClass.init(params);
 
+% Initiate plotting
+% Create plotting instance
+plotting = Plotting();
+plotting = plotting.init( ...
+    StochResSimClass.pop, StochResSimClass.world, params);
+
 % Run the main simulation of stochastic resetting class
-StochResSimClass = StochResSimClass.run(params);
+StochResSimClass = StochResSimClass.run(plotting, params);
 
 % finish and show results from stochastic resetting
-StochResSimClass = StochResSimClass.results(params);
+StochResSimClass = StochResSimClass.results(plotting, params);
 
 
 

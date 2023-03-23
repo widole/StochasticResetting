@@ -13,13 +13,13 @@ classdef Counter
         rt_generator;
 
         % stochastic reset time generator
-        srt_generator;
+        sr_generator;
 
         % variable for current run time
         r_time;
 
         % variable for current resetting time
-        s_time;
+        sr_time;
 
         % Timer for counting when goal was found
         t_goal = 0;
@@ -29,223 +29,135 @@ classdef Counter
     end
 
     methods
-        % necessary functions for the counter class
 
-        % Initialize the counter
-        function self = init_counter(self, mem_arr, sim_id, params, i, j)
+        function self = init(self, reset, params)
 
             % First we create our run time generators, this is program
             % specific.
-            switch sim_id
+            % For stochastic resetting, what run time generator do
+            % we want to use then? Right now we use a normal
+            % distribution (stable with alpha = 2)
 
-                case 'ga'
-                    % In the case of genetic algorithm, we create a neural
-                    % network to take care of the run times
+            % Load run time generator
+            self.rt_generator = makedist('Stable', ...
+                'alpha', params.alpha, ...
+                'beta', params.beta, ...
+                'gam', params.gamma, ...
+                'delta', params.delta);
 
-                    % Load run time generator
-                    self.rt_generator = NeuralNetwork();
+            % Create the stochastic resetting time generator, there are 3
+            % choices, as input as reset. It can be 
+            % 'no' = no resetting will occur
+            % 'exp' = exponential distribution resetting time
+            % 'int' = neural network generated resetting time
+            switch reset
 
-                    % Initiate run time generator
-                    self.rt_generator = ...
-                        self.rt_generator.init_NeuralNetwork(params);
+                case 'no'
 
-                case 'lf'
-                    % For levy flight, the run time generator is the levy
-                    % distribution from which we will take run time values
+                    % For no resetting, we create a normal distribution
+                    % with 'inf' long mean time and no variance
+                    self.sr_generator = makedist( ...
+                        'normal', (params.N + 1) * params.dt, 0);
 
-                    % Load run time generator
-                    self.rt_generator = makedist('Stable', ...
-                        'alpha', params.alpha(i), ...
-                        'beta', params.beta, ...
-                        'gam', params.gamma, ...
-                        'delta', params.delta);
+                case 'exp'
+                    % Create exponential distribution to draw resetting
+                    % time from
 
-                case 'sr'
-                    % For stochastic resetting, what run time generator do
-                    % we want to use then? Right now we use a normal
-                    % distribution (stable with alpha = 2)
+                    self.sr_generator = makedist( ...
+                        'Exponential', 'mu', 1 / params.sr_rate);
 
-                    % Load run time generator
-                    self.rt_generator = makedist('Stable', ...
-                        'alpha', 2, ...
-                        'beta', params.beta, ...
-                        'gam', params.gamma, ...
-                        'delta', params.delta);
+                case 'int'
+                    % This is for the neural network, it has not been
+                    % implemented yet.
 
+                    self.sr_generator = makedist( ...
+                        'Exponential', 'mu', 1 / (2 * params.sr_rate));
+                
             % End switch
             end
 
-            % Stochastic resetting generator, if stochastic reset is the
-            % program of choice
-            if strcmp(sim_id, 'sr')
-                % The stochastic resetting function should be also
-                % dependent on the heterogenity number of the agent.
-                % Ranging from no resetting, fixed time resetting,
-                % exponential and "smart" resetting.
-
-                % Create generators
-                switch i
-                    case 1
-                        % In the first case, the generator is infinite,
-                        % since we do not want to reset.
-
-                        self.srt_generator = makedist('normal', (params.N + 1) * params.dt, 0);
-
-                    case 2
-                        % In the second case, we have a fixed reset time.
-                        % What this time should be can depend on a lot of
-                        % parameters but we should try to find a value that
-                        % is somewhat good.
-
-                        self.srt_generator = makedist('normal', 10, 0);
-
-                    case 3
-                        % Case 3, is the exponential distribution case, now
-                        % the stochastic resetting time values will be
-                        % taken from an exponential distribution.
-
-                        self.srt_generator = makedist( ...
-                            'Exponential', 'mu', 1 / params.stoch_r);
-
-                    case 4
-                        % Case 4 is smart, this should contain a neural
-                        % network, that will create stochastic resetting
-                        % values for optimizing resetting times. NOT BEEN
-                        % IMPLEMENTED YET
-
-                        self.srt_generator = makedist( ...
-                            'Exponential', 'mu', 1 / (2 * params.stoch_r));
-                
-                % End switch
-                end
-                
-
-            % End if
-            end
 
             % Draw initial values
 
             % Draw run time value
-            self.r_time = self.draw_rt(sim_id, mem_arr);
+            self.r_time = self.draw_rt();
 
             % Draw stochastic resetting time value
-            self.s_time = self.draw_srt(sim_id);
+            self.sr_time = self.draw_sr();
 
 
         % End function statement
         end
 
-        % Function for drawing effort value
-        function y = draw_rt(self, sim_id, mem_arr)
+        function y = draw_rt(self)
 
-            % Way of creating effort value depends on program
-            switch sim_id
+            % The tumbling time for stochastic resetting is also
+            % based on the stable distribution
+            y = abs(random(self.rt_generator));
 
-                % For genetic algorithm
-                case 'ga'
-
-                    % Draw value from neural network
-                    x = self.get_net_inp(mem_arr)'; % {0, 0, 0, 0}';
-                    y = self.rt_generator.get_output(x);
-
-                case 'lf'
-
-                    y = abs(random(self.rt_generator));
-
-                case 'sr'
-                    % The tumbling time for stochastic resetting is also
-                    % based on the stable distribution
-
-                    y = abs(random(self.rt_generator));
-
-            % End switch
-            end
-
-        % End function statement
+        % End draw_rt function
         end
 
-        % Function to turn memory array to valid input to network
-        function x = get_net_inp(self, mem_arr)
+        function y = draw_sr(self)
 
-            % Loop through the 4 inputs
-            for i=1:4
+            % Draw stochastic resetting time from distribution
+            y = abs(random(self.sr_generator));
 
-                % Start ind
-                i_start = (i-1)*64 + 1;
-                
-                % End index
-                i_stop = i*64;
-                
-                x{i} = sum(mem_arr(i_start:i_stop));
-
-            % End for-loop
-            end
-
-        % End function
+        % End draw_sr function
         end
-        
-        % Update the counters i.e. count down, and if that is the case =>
-        % do actions
-        function [self, eff_reset, stoch_reset] = upd_counters(self, sim_id, return_home, res, mem_arr, params)
+
+        function [self, rt_reset, sr_reset] = upd_counters(self, ret_home, res, mem_arr, params)
 
             % Initiate the return to false
-            eff_reset = false;
-            stoch_reset = false;
+            rt_reset = false;
+            sr_reset = false;
+
+            if ~(ret_home)
+                % If the agent is not returning home currently, then we
+                % should update our counters, but if it is, then we should
+                % not
             
 
-            %% Update the effort value
-            self.r_time = self.r_time - 2^(res) * params.dt;
+                % Update the effort value (run time)
+                self.r_time = self.r_time - 2^(res) * params.dt;
 
-            % Check if we are currently not moving towards home
-            % (stochasrtic resetting)
-            if ~(return_home)
-    
-                % Check if our effort value is or below 0
+                % Update the stochastic resetting value
+                self.sr_time = self.sr_time - params.dt;
+
                 if self.r_time <= 0
-    
-                    % if the effort drops to or below 0 then we should
-                    % update the agents rotation, this will be done by
-                    % setting the output to true
-                    eff_reset = true;
+                    % If our run time value is at or below 0, then we
+                    % should rotate and draw new
+
+                    % set rotate output to true
+                    rt_reset = true;
     
                     % Draw a new effort value
-                    self.r_time = self.draw_rt(sim_id, mem_arr);
-    
-                end
-            end
-
-            %% Check the stochastic reset
-
-            if strcmp(sim_id, 'sr')
-                % If running stochastic resetting, then we also update our
-                % stochjastic resetting time
-
-                % if the agent is not currently returning home
-                if ~(return_home)
-
-                    self.s_time = self.s_time - params.dt;
+                    self.r_time = self.draw_rt();
 
                 end
-                
-    
-                if self.s_time <= 0
-    
-                    % If the stochastic reset value drops down to or below 0
-                    % then we reset the agents position to 0
+
+                if self.sr_time <= 0
+                    % If our stochastic reset time value drops to or below
+                    % 0, then we reset the agents position to home
                     
-                    % return true
-                    stoch_reset = true;
+                    % set return home output to true
+                    sr_reset = true;
 
                     % reset our stochastic reset timer
-                    self.s_time = self.draw_srt(sim_id);
+                    self.sr_time = self.draw_sr();
                     
-    
+                end
+
+                % Update the goal timer
+                if ~(self.b_goal)
+                    self.t_goal = self.t_goal + params.dt;
                 end
 
             end
 
+
             % Check goal found timer
-            if ((params.goal) && (self.b_goal ~= true))
+            if (self.b_goal ~= true)
 
                 self.t_goal = self.t_goal + params.dt;
 
@@ -255,42 +167,13 @@ classdef Counter
         % End function
         end
 
-        % Reset counters for new generation
-        function self = reset(self, mem_arr)
-
-            % Draw new effort value
-            self.eff_val = self.draw_eff(mem_arr);
-
-        % End function
-        end
-
-        function y = draw_srt(self, sim_id)
-            % Draw stochastic resetting time value
-
-            if strcmp(sim_id, 'sr')
-                % Only if we are simulating stochastic resetting should we
-                % draw a stochastic resetting time
-
-                y = abs(random(self.srt_generator));
-
-            else
-
-                y = 0;
-
-            % End if
-            end
-
-        % End function
-        end
-
         function self = g_found(self)
-            % If the goal is found, we set our boolean to true => we stop
-            % counting on that timer
 
-            self.b_goal = true;
+            % Check that goal is found
+            b_goal = true;
 
-        % End function
         end
+
 
     % End methods
     end
