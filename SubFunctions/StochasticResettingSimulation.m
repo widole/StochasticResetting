@@ -33,7 +33,7 @@ classdef StochasticResettingSimulation
         % End init
         end
 
-        function [self, plotting] = run(self, plotting, params)
+        function [self, plotting, trackingObjects] = run(self, trackingObjects, plotting, params)
 
             % Function for running the simulation of agents in the world.
             % This will run throught all the simulation steps.
@@ -49,11 +49,17 @@ classdef StochasticResettingSimulation
             
                 % Plotting
                 plotting = plotting.plot_motion(i, self.pop.agents(:,1), params);
+
+                % Get frame from plotting
+                trackingObjects = trackingObjects.getFrame( ...
+                    plotting.fig_cont_motion(1));
+
+                % Detect objects
+                trackingObjects = trackingObjects.objDetect();
             
             end
         end
 
-        
         function [self, av_g_time] = results(self, plotting, params)
             
             % Average time til goal for each kind of agent

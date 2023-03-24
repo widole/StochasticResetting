@@ -30,7 +30,7 @@ classdef Population
             % of agents. We have 1 that is not resetting, 1 that is
             % resetting according to the exponential distribution, and 1
             % that is 'intelligent'.
-            nr_diff = 3;
+            nr_diff = 1;
 
             % The size of the population will depend on two variables
             % agent(i,j), where i=0,...,N, where N = the number of

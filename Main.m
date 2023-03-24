@@ -34,11 +34,20 @@ plotting = Plotting();
 plotting = plotting.init( ...
     StochResSimClass.pop, StochResSimClass.world, params);
 
+% Create and initiate tracking of objects
+trackingObjects = Tracking();
+trackingObjects = trackingObjects.init();
+
 % Run the main simulation of stochastic resetting class
-StochResSimClass = StochResSimClass.run(plotting, params);
+[StochResSimClass, plotting, trackingObjects] = StochResSimClass.run( ...
+    trackingObjects, plotting, params);
 
 % finish and show results from stochastic resetting
 StochResSimClass = StochResSimClass.results(plotting, params);
+
+% Show comparison of tracked trajectory and real trajectory
+trackingObjects = trackingObjects.showTrack( ...
+    StochResSimClass.pop.savevar, params);
 
 
 

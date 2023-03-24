@@ -55,7 +55,7 @@ classdef Params
 
         % Boundary conditions (0 = unbounded, 1 = periodic, 2 = fixed, 3 =
         % bounce)
-        bnd_cond = 0;
+        bnd_cond = 2;
 
         % Set the world size, as in how many cells it should contain
         world_size = 3;
